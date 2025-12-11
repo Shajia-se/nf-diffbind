@@ -16,8 +16,12 @@ A clean and modular DiffBind pipeline for differential binding analysis of ChIP-
 
 Example:
 
-WT_1,WT,1,/path/WT.Rep1.bam,/path/WT.input.bam,/path/WT.Rep1_peaks.xls,macs
-TG_1,TG,1,/path/TG.Rep1.bam,/path/TG.input.bam,/path/TG.Rep1_peaks.xls,macs
+SampleID,Condition,Replicate,bamReads,bamControl,Peaks,PeakCaller
+WT_1,WT,1,/path/bam/WT.Rep1.md.bam,/path/input/WT_input.Rep1.md.bam,/path/peaks/WT.Rep1_peaks.xls,macs
+WT_2,WT,2,/path/bam/WT.Rep2.md.bam,/path/input/WT_input.Rep2.md.bam,/path/peaks/WT.Rep2_peaks.xls,macs
+TG_1,TG,1,/path/bam/TG.Rep1.md.bam,/path/input/TG_input.Rep1.md.bam,/path/peaks/TG.Rep1_peaks.xls,macs
+TG_2,TG,2,/path/bam/TG.Rep2.md.bam,/path/input/TG_input.Rep2.md.bam,/path/peaks/TG.Rep2_peaks.xls,macs
+
 
 ---
 
