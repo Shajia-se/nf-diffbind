@@ -1,5 +1,5 @@
-SampleID,Condition,Replicate,bamReads,bamControl,Peaks,PeakCaller
-WT_GAR0968,WT,1,/ictstr01/groups/idc/projects/uhlenhaut/jiang/pipelines/nf-chipfilter/chipfilter_output/GAR0968_S40_L006_R.clean.bam,,/ictstr01/groups/idc/projects/uhlenhaut/jiang/pipelines/nf-macs3/macs3_output/GAR0968_S40_L006_R.clean_peaks.xls,macs
-WT_GAR0979,WT,2,/ictstr01/groups/idc/projects/uhlenhaut/jiang/pipelines/nf-chipfilter/chipfilter_output/GAR0979_S58_L008_R.clean.bam,,/ictstr01/groups/idc/projects/uhlenhaut/jiang/pipelines/nf-macs3/macs3_output/GAR0979_S58_L008_R.clean_peaks.xls,macs
-TG_GAR1585,TG,1,/ictstr01/groups/idc/projects/uhlenhaut/jiang/pipelines/nf-chipfilter/chipfilter_output/GAR1585_S9_L001_R.clean.bam,,/ictstr01/groups/idc/projects/uhlenhaut/jiang/pipelines/nf-macs3/macs3_output/GAR1585_S9_L001_R.clean_peaks.xls,macs
-TG_GAR1586,TG,2,/ictstr01/groups/idc/projects/uhlenhaut/jiang/pipelines/nf-chipfilter/chipfilter_output/GAR1586_S10_L001_R.clean.bam,,/ictstr01/groups/idc/projects/uhlenhaut/jiang/pipelines/nf-macs3/macs3_output/GAR1586_S10_L001_R.clean_peaks.xls,macs
+SampleID,Condition,Replicate,bamReads,Peaks,PeakCaller
+WT_GAR0968,WT,1,/ictstr01/groups/idc/projects/uhlenhaut/jiang/pipelines/nf-chipfilter/chipfilter_output/GAR0968_S40_L006_R.clean.bam,/ictstr01/groups/idc/projects/uhlenhaut/jiang/pipelines/nf-macs3/macs3_output/GAR0968_S40_L006_R.clean_peaks.narrowPeak,macs
+WT_GAR0979,WT,2,/ictstr01/groups/idc/projects/uhlenhaut/jiang/pipelines/nf-chipfilter/chipfilter_output/GAR0979_S58_L008_R.clean.bam,/ictstr01/groups/idc/projects/uhlenhaut/jiang/pipelines/nf-macs3/macs3_output/GAR0979_S58_L008_R.clean_peaks.narrowPeak,macs
+TG_GAR1585,TG,1,/ictstr01/groups/idc/projects/uhlenhaut/jiang/pipelines/nf-chipfilter/chipfilter_output/GAR1585_S9_L001_R.clean.bam,/ictstr01/groups/idc/projects/uhlenhaut/jiang/pipelines/nf-macs3/macs3_output/GAR1585_S9_L001_R.clean_peaks.narrowPeak,macs
+TG_GAR1586,TG,2,/ictstr01/groups/idc/projects/uhlenhaut/jiang/pipelines/nf-chipfilter/chipfilter_output/GAR1586_S10_L001_R.clean.bam,/ictstr01/groups/idc/projects/uhlenhaut/jiang/pipelines/nf-macs3/macs3_output/GAR1586_S10_L001_R.clean_peaks.narrowPeak,macs

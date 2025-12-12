@@ -16,7 +16,6 @@ process diffbind_run {
   """
   set -euo pipefail
 
-  # 确保 R 有可写的临时目录
   export TMPDIR=\$PWD
 
   cat > diffbind_run.R << 'EOF'
@@ -56,9 +55,8 @@ process diffbind_run {
   for (i in seq_len(nrow(samples))) {
     peak_file <- samples[["Peaks"]][i]
     if (!file.exists(peak_file)) {
-      warning("Peak file not found: ", peak_file)
-      samples[["nPeaks"]][i] <- 0L
-    } else {
+  stop(paste0("Peak file not found: ", peak_file))
+  } else {
       n <- length(readLines(peak_file, warn = FALSE))
       samples[["nPeaks"]][i] <- n
     }
@@ -120,7 +118,7 @@ process diffbind_run {
 
     for (comp in seq_len(nrow(comparisons))) {
 
-      comp_name <- paste0(comparisons$Group[comp], ".vs.", comparisons$Group2[comp])
+      comp_name <- paste0(comparisons[["Group"]][comp], ".vs.", comparisons[["Group2"]][comp])
       message(">>> Processing contrast: ", comp_name)
 
       pdf(paste0("02_", comp_name, ".pdf"))
