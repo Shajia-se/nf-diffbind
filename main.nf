@@ -4,7 +4,7 @@ process diffbind_run {
   stageInMode 'symlink'
   stageOutMode 'move'
 
-  publishDir "${params.project_folder}/${diffbind_output}", mode: 'copy'
+publishDir "${params.project_folder}/${params.diffbind_output}", mode: 'copy'
 
   input:
     path samplesheet
