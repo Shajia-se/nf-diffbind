@@ -16,17 +16,7 @@ Required `samplesheet.csv` columns:
 Optional:
 
 - `bamControl`
-- `Batch` (used for confounding warning only)
-
-Example:
-
-```csv
-SampleID,Condition,Replicate,bamReads,Peaks,PeakCaller
-WT_GAR0968,WT,1,/path/WT_rep1.clean.bam,/path/WT_rep1_peaks.narrowPeak,macs
-WT_GAR0979,WT,2,/path/WT_rep2.clean.bam,/path/WT_rep2_peaks.narrowPeak,macs
-TG_GAR1585,TG,1,/path/TG_rep1.clean.bam,/path/TG_rep1_peaks.narrowPeak,macs
-TG_GAR1586,TG,2,/path/TG_rep2.clean.bam,/path/TG_rep2_peaks.narrowPeak,macs
-```
+- `Batch` (used for confounding warning)
 
 ## Run
 
@@ -40,26 +30,36 @@ Resume:
 nextflow run main.nf -profile hpc --samplesheet samplesheet.csv -resume
 ```
 
-## Output
+## Key Outputs
 
 Output directory: `${project_folder}/${diffbind_output}`
 
-Common files:
+Core DiffBind:
 
 - `01_general_QC.pdf`
 - `sample_info.after_count.tsv`
 - `libsizes.tsv`, `libsizes.xlsx`
-- `consensus_peaks.tsv`, `consensus_peaks.xlsx`
+- `contrasts.tsv`
+- `significant.<contrast>.tsv/.xlsx`
+- `all_peaks.<contrast>.tsv/.xlsx/.bed`
 - `db_after_count_and_normalize.RData`
 - `diffbind_session.RData`
 
-If differential contrasts are possible (>=2 replicates per group):
+Added overlap/summary outputs:
 
-- `02_<group1>.vs.<group2>.pdf`
-- `significant.<group1>.vs.<group2>.tsv/.xlsx`
-- `all_peaks.<group1>.vs.<group2>.tsv/.xlsx/.bed`
-- `normalized_expression_of_significant_peaks.<group1>.vs.<group2>.tsv/.xlsx`
+- `peak_universe_upset_input.tsv`
+- `peak_universe_condition_sizes.tsv`
+- `peak_universe_pairwise_overlap.tsv`
+- `peak_universe_venn.pdf` (optional, if `VennDiagram` is installed)
+- `condition_unique_up.<contrast>.bed`
+- `condition_unique_down.<contrast>.bed`
+- `diffbind_summary.tsv`, `diffbind_summary.xlsx`
+
+## Parameters
+
+- `diff_fdr` (default `0.05`): FDR threshold for unique peak export
+- `diff_lfc` (default `1`): absolute Fold threshold for unique peak export
 
 ## Note
 
-If `Condition` and `Batch` are perfectly confounded, DiffBind cannot separate batch from biology. In that case, results should be treated as exploratory.
+If `Condition` and `Batch` are perfectly confounded, differential results are exploratory.

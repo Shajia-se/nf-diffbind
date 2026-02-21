@@ -37,6 +37,9 @@ process diffbind_run {
   samplesheet <- normalizePath(args[1])
   message("Using sample sheet: ", samplesheet)
 
+  fdr_cutoff <- as.numeric("${params.diff_fdr ?: 0.05}")
+  lfc_cutoff <- as.numeric("${params.diff_lfc ?: 1}")
+
   samples <- read.csv(samplesheet, stringsAsFactors = FALSE, check.names = FALSE)
 
   required_cols <- c("SampleID","Condition","Replicate","bamReads","Peaks","PeakCaller")
@@ -71,6 +74,64 @@ process diffbind_run {
     }
   }
 
+  ## Peak-universe overlap by condition from input peak files
+  read_peak_ids <- function(path) {
+    D <- tryCatch(read.delim(path, header = FALSE, stringsAsFactors = FALSE), error = function(e) NULL)
+    if (is.null(D) || ncol(D) < 3) return(character(0))
+    paste(D[[1]], D[[2]], D[[3]], sep = ":")
+  }
+
+  cond_levels <- unique(samples[["Condition"]])
+  peak_sets <- list()
+  for (cond in cond_levels) {
+    rows <- samples[samples[["Condition"]] == cond, , drop = FALSE]
+    ids <- unique(unlist(lapply(rows[["Peaks"]], read_peak_ids), use.names = FALSE))
+    peak_sets[[as.character(cond)]] <- ids
+  }
+
+  if (length(peak_sets) >= 2) {
+    universe <- unique(unlist(peak_sets, use.names = FALSE))
+    mem <- data.frame(peak_id = universe, stringsAsFactors = FALSE)
+    for (nm in names(peak_sets)) {
+      mem[[nm]] <- as.integer(universe %in% peak_sets[[nm]])
+    }
+    write.table(mem, "peak_universe_upset_input.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+
+    overlap_stats <- data.frame(
+      condition = names(peak_sets),
+      n_peaks = vapply(peak_sets, length, integer(1)),
+      stringsAsFactors = FALSE
+    )
+    write.table(overlap_stats, "peak_universe_condition_sizes.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+
+    # Pairwise overlap matrix
+    conds <- names(peak_sets)
+    M <- matrix(0, nrow = length(conds), ncol = length(conds), dimnames = list(conds, conds))
+    for (i in seq_along(conds)) {
+      for (j in seq_along(conds)) {
+        M[i, j] <- length(intersect(peak_sets[[conds[i]]], peak_sets[[conds[j]]]))
+      }
+    }
+    write.table(M, "peak_universe_pairwise_overlap.tsv", sep = "\t", quote = FALSE, col.names = NA)
+
+    # Optional venn if exactly two groups and package is available
+    if (length(peak_sets) == 2 && requireNamespace("VennDiagram", quietly = TRUE)) {
+      grDevices::pdf("peak_universe_venn.pdf", width = 6, height = 6)
+      grid::grid.newpage()
+      VennDiagram::draw.pairwise.venn(
+        area1 = length(peak_sets[[1]]),
+        area2 = length(peak_sets[[2]]),
+        cross.area = length(intersect(peak_sets[[1]], peak_sets[[2]])),
+        category = names(peak_sets),
+        fill = c("#4C78A8", "#F58518"),
+        alpha = c(0.5, 0.5),
+        cex = 1.2,
+        cat.cex = 1.1
+      )
+      grDevices::dev.off()
+    }
+  }
+
   db <- dba(sampleSheet = samples)
 
   pdf("01_general_QC.pdf")
@@ -102,6 +163,8 @@ process diffbind_run {
   save(db, file = "db_after_count_and_normalize.RData")
 
   has_reps <- sum(table(samples[["Condition"]]) > 1) > 1
+  summary_rows <- list()
+
   if (!has_reps) {
     message("Not enough replicates in more than one group; skipping differential contrast analysis.")
   } else {
@@ -113,7 +176,8 @@ process diffbind_run {
 
     if (nrow(comparisons) > 0) {
       for (comp in seq_len(nrow(comparisons))) {
-        comp_name <- paste0(comparisons[["Group"]][comp], ".vs.", comparisons[["Group2"]][comp])
+        raw_comp_name <- paste0(comparisons[["Group"]][comp], ".vs.", comparisons[["Group2"]][comp])
+        comp_name <- gsub("[^A-Za-z0-9._-]", "_", raw_comp_name)
         pdf(paste0("02_", comp_name, ".pdf"))
 
         sig <- dba.report(db, contrast = comp)
@@ -152,9 +216,50 @@ process diffbind_run {
                       sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
         }
 
+        n_all <- nrow(all_peaks)
+        n_sig <- NA_integer_
+        n_up <- NA_integer_
+        n_down <- NA_integer_
+
+        if (n_all > 0 && all(c("FDR", "Fold", "seqnames", "start", "end") %in% colnames(all_peaks))) {
+          sig2 <- subset(all_peaks, !is.na(FDR) & FDR <= fdr_cutoff & !is.na(Fold) & abs(Fold) >= lfc_cutoff)
+          up <- subset(sig2, Fold >= lfc_cutoff)
+          down <- subset(sig2, Fold <= -lfc_cutoff)
+
+          n_sig <- nrow(sig2)
+          n_up <- nrow(up)
+          n_down <- nrow(down)
+
+          if (n_up > 0) {
+            write.table(up[, c("seqnames", "start", "end")],
+                        paste0("condition_unique_up.", comp_name, ".bed"),
+                        sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
+          }
+          if (n_down > 0) {
+            write.table(down[, c("seqnames", "start", "end")],
+                        paste0("condition_unique_down.", comp_name, ".bed"),
+                        sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
+          }
+        }
+
+        summary_rows[[length(summary_rows) + 1]] <- data.frame(
+          contrast = comp_name,
+          n_all = n_all,
+          n_sig_fdr_lfc = n_sig,
+          n_up = n_up,
+          n_down = n_down,
+          stringsAsFactors = FALSE
+        )
+
         dev.off()
       }
     }
+  }
+
+  if (length(summary_rows) > 0) {
+    S <- do.call(rbind, summary_rows)
+    write.table(S, "diffbind_summary.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+    openxlsx::write.xlsx(S, "diffbind_summary.xlsx", rowNames = FALSE)
   }
 
   consensus <- as.data.frame(db[["binding"]])
