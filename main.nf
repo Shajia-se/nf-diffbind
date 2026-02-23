@@ -275,14 +275,96 @@ process diffbind_run {
 }
 
 workflow {
-  if (!params.samplesheet) {
-    exit 1, "ERROR: Please provide --samplesheet"
-  }
+  def ch_samplesheet
 
-  Channel
-    .fromPath(params.samplesheet, checkIfExists: true)
-    .ifEmpty { exit 1, "ERROR: samplesheet not found: ${params.samplesheet}" }
-    .set { ch_samplesheet }
+  if (params.samplesheet && file(params.samplesheet).exists()) {
+    ch_samplesheet = Channel
+      .fromPath(params.samplesheet, checkIfExists: true)
+  } else if (params.samples_master) {
+    def master = file(params.samples_master)
+    assert master.exists() : "samples_master not found: ${params.samples_master}"
+
+    def header = null
+    def records = []
+    master.eachLine { line, n ->
+      if (!line?.trim()) return
+      def cols = line.split(',', -1)*.trim()
+      if (n == 1) {
+        header = cols
+      } else {
+        def rec = [:]
+        header.eachWithIndex { h, i -> rec[h] = i < cols.size() ? cols[i] : '' }
+        records << rec
+      }
+    }
+
+    assert header : "samples_master header not found: ${params.samples_master}"
+    assert header.contains('sample_id') : "samples_master missing required column: sample_id"
+    assert header.contains('condition') : "samples_master missing required column: condition"
+
+    def isEnabled = { rec ->
+      def v = rec.enabled?.toString()?.trim()?.toLowerCase()
+      (v == null || v == '' || v == 'true')
+    }
+    def isControl = { rec ->
+      rec.is_control?.toString()?.trim()?.toLowerCase() == 'true'
+    }
+    def useForDiffbind = { rec ->
+      def v = rec.use_for_diffbind?.toString()?.trim()?.toLowerCase()
+      (v == null || v == '' || v == 'true')
+    }
+    def isChip = { rec ->
+      def lt = rec.library_type?.toString()?.trim()?.toLowerCase()
+      !isControl(rec) && (lt == null || lt == '' || lt == 'chip')
+    }
+
+    def bamDir = file(params.chipfilter_output)
+    def peakDir = file(params.macs3_output)
+    assert bamDir.exists() : "chipfilter_output not found: ${params.chipfilter_output}"
+    assert peakDir.exists() : "macs3_output not found: ${params.macs3_output}"
+
+    def peakExt = (params.diffbind_peak_ext ?: 'narrowPeak').toString()
+    def rows = records
+      .findAll { rec -> isEnabled(rec) && isChip(rec) && useForDiffbind(rec) }
+      .collect { rec ->
+        def sid = rec.sample_id?.toString()?.trim()
+        def cond = rec.condition?.toString()?.trim()
+        def rep = rec.replicate?.toString()?.trim()
+        if (!sid || !cond) return null
+
+        def bamHits = bamDir.listFiles()?.findAll { f ->
+          f.isFile() && f.name.endsWith('.clean.bam') && (f.name == "${sid}.clean.bam" || f.name.startsWith("${sid}_"))
+        } ?: []
+        if (bamHits.isEmpty()) throw new IllegalArgumentException("No clean BAM found for sample_id '${sid}' under: ${params.chipfilter_output}")
+        if (bamHits.size() > 1) throw new IllegalArgumentException("Multiple clean BAM files matched sample_id '${sid}': ${bamHits*.name.join(', ')}")
+
+        def peakPath = file("${params.macs3_output}/${sid}_peaks.${peakExt}")
+        if (!peakPath.exists()) throw new IllegalArgumentException("Peak file not found for sample_id '${sid}': ${peakPath}")
+
+        [
+          SampleID  : sid,
+          Condition : cond,
+          Replicate : (rep && rep.isInteger()) ? rep : "1",
+          bamReads  : file(bamHits[0].toString()).toString(),
+          Peaks     : peakPath.toString(),
+          PeakCaller: 'narrow'
+        ]
+      }
+      .findAll { it != null }
+
+    assert !rows.isEmpty() : "No DiffBind rows generated from samples_master: ${params.samples_master}"
+
+    def tmpCsv = file("${params.project_folder}/.diffbind_autogen_samplesheet.csv")
+    tmpCsv.text = ''
+    tmpCsv << "SampleID,Condition,Replicate,bamReads,Peaks,PeakCaller\n"
+    rows.each { r ->
+      tmpCsv << "${r.SampleID},${r.Condition},${r.Replicate},${r.bamReads},${r.Peaks},${r.PeakCaller}\n"
+    }
+
+    ch_samplesheet = Channel.value(tmpCsv)
+  } else {
+    exit 1, "ERROR: Please provide --samplesheet (existing file) or --samples_master for auto generation."
+  }
 
   diffbind_run(ch_samplesheet)
 }
