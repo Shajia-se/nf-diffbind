@@ -37,7 +37,8 @@ Optional columns used:
 Auto behavior:
 - keeps enabled, non-control, chip rows with `use_for_diffbind=true`
 - resolves BAM from `${chipfilter_output}/${sample_id}*.clean.bam`
-- resolves peak from `${macs3_output}/${sample_id}_peaks.${diffbind_peak_ext}`
+- resolves peak from `${macs3_output}/strict_q0.01/${sample_id}_peaks.${diffbind_peak_ext}` by default
+- override profile with `--diffbind_macs3_profile`
 - writes an internal generated CSV and runs DiffBind with it
 
 ## Run
@@ -54,6 +55,8 @@ nextflow run main.nf -profile hpc \
   --chipfilter_output /path/to/nf-chipfilter/chipfilter_output \
   --macs3_output /path/to/nf-macs3/macs3_output
 ```
+
+Default MACS3 profile used by DiffBind: `strict_q0.01`
 
 Resume:
 ```bash

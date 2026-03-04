@@ -319,9 +319,13 @@ workflow {
     }
 
     def bamDir = file(params.chipfilter_output)
-    def peakDir = file(params.macs3_output)
+    def peakBase = file(params.macs3_output.toString()).isAbsolute()
+      ? file(params.macs3_output.toString())
+      : file("${params.project_folder}/${params.macs3_output}")
+    def peakProfile = (params.diffbind_macs3_profile ?: 'strict_q0.01').toString()
+    def peakDir = file("${peakBase}/${peakProfile}")
     assert bamDir.exists() : "chipfilter_output not found: ${params.chipfilter_output}"
-    assert peakDir.exists() : "macs3_output not found: ${params.macs3_output}"
+    assert peakDir.exists() : "MACS3 profile output not found: ${peakDir}"
 
     def peakExt = (params.diffbind_peak_ext ?: 'narrowPeak').toString()
     def rows = records
@@ -338,7 +342,7 @@ workflow {
         if (bamHits.isEmpty()) throw new IllegalArgumentException("No clean BAM found for sample_id '${sid}' under: ${params.chipfilter_output}")
         if (bamHits.size() > 1) throw new IllegalArgumentException("Multiple clean BAM files matched sample_id '${sid}': ${bamHits*.name.join(', ')}")
 
-        def peakPath = file("${params.macs3_output}/${sid}_peaks.${peakExt}")
+        def peakPath = file("${peakDir}/${sid}_peaks.${peakExt}")
         if (!peakPath.exists()) throw new IllegalArgumentException("Peak file not found for sample_id '${sid}': ${peakPath}")
 
         [
