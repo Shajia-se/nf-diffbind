@@ -337,10 +337,10 @@ workflow {
         if (!sid || !cond) return null
 
         def bamHits = bamDir.listFiles()?.findAll { f ->
-          f.isFile() && f.name.endsWith('.clean.bam') && (f.name == "${sid}.clean.bam" || f.name.startsWith("${sid}_"))
+          f.isFile() && f.name.endsWith('.nomulti.bam') && (f.name == "${sid}.nomulti.bam" || f.name.startsWith("${sid}_"))
         } ?: []
-        if (bamHits.isEmpty()) throw new IllegalArgumentException("No clean BAM found for sample_id '${sid}' under: ${params.chipfilter_output}")
-        if (bamHits.size() > 1) throw new IllegalArgumentException("Multiple clean BAM files matched sample_id '${sid}': ${bamHits*.name.join(', ')}")
+        if (bamHits.isEmpty()) throw new IllegalArgumentException("No MAPQ-filtered BAM found for sample_id '${sid}' under: ${params.chipfilter_output}")
+        if (bamHits.size() > 1) throw new IllegalArgumentException("Multiple MAPQ-filtered BAM files matched sample_id '${sid}': ${bamHits*.name.join(', ')}")
 
         def peakPath = file("${peakDir}/${sid}_peaks.${peakExt}")
         if (!peakPath.exists()) throw new IllegalArgumentException("Peak file not found for sample_id '${sid}': ${peakPath}")
