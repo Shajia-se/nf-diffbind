@@ -281,6 +281,9 @@ workflow {
     ch_samplesheet = Channel
       .fromPath(params.samplesheet, checkIfExists: true)
   } else if (params.samples_master) {
+    if (!params.chipfilter_output || !params.macs3_output) {
+      exit 1, "ERROR: --chipfilter_output and --macs3_output must be provided when auto-generating DiffBind samplesheet."
+    }
     def master = file(params.samples_master)
     assert master.exists() : "samples_master not found: ${params.samples_master}"
 
